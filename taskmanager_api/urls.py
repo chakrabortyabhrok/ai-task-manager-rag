@@ -25,7 +25,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 urlpatterns = [
     path('create-superuser/', CreateSuperUserView.as_view(), name='create-superuser'),
     path('admin/', admin.site.urls),
-    path('', TemplateView.as_view(template_name='index_ai_backup.html')),
+    path('', TemplateView.as_view(template_name='index.html')),
     path('sample/', TemplateView.as_view(template_name='sample.html'), name='sample_page'),
     path('sample/sample2/', TemplateView.as_view(template_name='sample2.html'), name='sample_page2'),
     path('api/', include('core.urls')),
