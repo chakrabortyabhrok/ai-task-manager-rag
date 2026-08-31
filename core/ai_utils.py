@@ -100,7 +100,7 @@ def add_task_to_vectorstore(task):
     }
 
     document = Document(page_content=page_content, metadata=metadata)
-    vectorstore.add_documents([document])
+    vectorstore.add_documents([document], ids=[str(task.id)])
 
 def ask_ai_about_tasks(question: str) -> str:
     try:
@@ -139,6 +139,73 @@ def ask_ai_about_tasks(question: str) -> str:
     except Exception as e:
         print("Error in ask_ai_about_tasks:", e)
         return f"Sorry, something went wrong. Error: {str(e)}"
+
+def delete_task_from_vectorstore(task_id):
+    """
+    Removes a deleted task vector from PGVector
+    """
+    try:
+        vectorstore =get_vectorstore()
+        vectorstore.delete(ids=[str(task_id)])
+    except Exception as e:
+        print(f"Error deleting {task_id} vector: {e}")
+
+
+def sync_all_tasks_to_vectorstore(tasks):
+    """
+    Wipes old vector data and batch-embeds active tasks cleanly.
+    """
+    # 1. Delete the old collection from Postgres using a temporary reference
+    temp_store = get_vectorstore()
+    try:
+        temp_store.delete_collection()
+    except Exception as e:
+        print(f"Collection reset warning: {e}")
+
+    # 2. Get a FRESH vectorstore instance (re-creates the collection in Postgres with a new valid ID)
+    vectorstore = get_vectorstore()
+
+    if not tasks:
+        print("No tasks to sync.")
+        return
+
+    documents = []
+    ids = []
+
+    for task in tasks:
+        page_content = (
+            f"Task Title: {task.title}. "
+            f"Description: {task.description or 'No description provided'}. "
+            f"Current Status: {task.status}. "
+            f"Category: {task.category.name if task.category else 'No category'}."
+        )
+        metadata = {
+            "task_id": str(task.id),
+            "title": task.title,
+            "status": task.status,
+            "category": task.category.name if task.category else "None"
+        }
+        documents.append(Document(page_content=page_content, metadata=metadata))
+        ids.append(str(task.id))
+
+    print(f">>> Batch embedding {len(documents)} tasks...")
+    vectorstore.add_documents(documents, ids=ids)
+    print(f">>> Successfully synced {len(documents)} tasks to vectorstore!")
+
+          
+# def sync_all_tasks_to_vectorstore(tasks):
+#     """
+#     Wipes stale vectors and re-embeds only active DB tasks.
+#     """
+#     vectorstore = get_vectorstore()
+#     try:
+#         vectorstore.delete_collection()
+#     except Exception as e:
+#         print(f"collection reset warning: {e}")
+        
+#     for task in tasks:
+#         add_task_to_vectorstore(task)
+        
 
 """
 def clear_vectorstore():
