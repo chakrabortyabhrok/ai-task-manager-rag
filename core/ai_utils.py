@@ -128,9 +128,7 @@ def ask_ai_about_tasks(question: str) -> str:
         - Do not make up information.
         
         Answer this way:
-        - If you will have to list tasks, list all the tasks towards bottom by listing them with numbers like : 1. ... (next line) 2. ...
-        - dont give any other task details other than the title and the description in short.
-        - don't give the status
+        - If you will have to list tasks, list all the tasks by listing them with numbers like : 1. ... 2. ...
         Relevant tasks:
         {context}
 
