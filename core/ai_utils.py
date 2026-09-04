@@ -113,7 +113,7 @@ def ask_ai_about_tasks(question: str) -> str:
         relevant_docs = retriever.invoke(question)
 
         if not relevant_docs:
-            return "I couldn't find any relevant tasks for your question."
+            return "I couldn't find any relevant answer for your question."
 
         context = "\n\n".join([doc.page_content for doc in relevant_docs])
 
@@ -126,13 +126,17 @@ def ask_ai_about_tasks(question: str) -> str:
         - If the user asks for a count and you don't have all tasks, say so clearly.
         - If no question given, say so politely.
         - Do not make up information.
-
+        
+        Answer this way:
+        - If you will have to list tasks, list all the tasks towards bottom by listing them with numbers like : 1. ... (next line) 2. ...
+        - dont give any other task details other than the title and the description in short.
+        - don't give the status
         Relevant tasks:
         {context}
 
         User's Question: {question}
 
-        Answer clearly and concisely.
+        Answer clearly and concisely .
         """
         return get_ai_response(prompt)
 

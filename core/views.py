@@ -35,10 +35,10 @@ class AskAIView(APIView):
 
         return Response({"answer": answer}, status=status.HTTP_200_OK)
 
-class StandardPagination(PageNumberPagination):
-    page_size = 50
-    page_size_query_param = 'page_size'
-    max_page_size = 100
+# class StandardPagination(PageNumberPagination):
+#     page_size = 50
+#     page_size_query_param = 'page_size'
+#     max_page_size = 100
 
 class TaskViewSet(ModelViewSet):
     """ API ViewSet for managing tasks with filtering, searching, and pagination. """
@@ -49,7 +49,7 @@ class TaskViewSet(ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TaskFilter
-    pagination_class = StandardPagination
+    # pagination_class = StandardPagination
     ordering_fields = ['due_date', 'created_at', 'title']
      
     def get_serializer(self, *args, **kwargs):
