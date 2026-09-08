@@ -5,6 +5,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from langchain_postgres import PGVector
 from urllib import parse
+from .models import Category, Task
 
 load_dotenv()
 
@@ -85,12 +86,7 @@ def add_task_to_vectorstore(task):
 
     vectorstore = get_vectorstore()
 
-    page_content = (
-        f"Task Title: {task.title}. "
-        f"Description: {task.description or 'No description provided'}. "
-        f"Current Status: {task.status}. "
-        f"Category: {task.category.name if task.category else 'No category'}."
-    )
+    page_content = f"{task.title}. {task.description or ''}"
 
     metadata = {
         "task_id": task.id,
@@ -102,45 +98,81 @@ def add_task_to_vectorstore(task):
     document = Document(page_content=page_content, metadata=metadata)
     vectorstore.add_documents([document], ids=[str(task.id)])
 
-def ask_ai_about_tasks(question: str) -> str:
-    try:
-        vectorstore = get_vectorstore()
 
-        if vectorstore is None:
-            return "AI search is only available in production (PostgreSQL + pgvector)."
+def classify_intent(question: str) -> str:
+    prompt = f"""Analyze the user query and decide if it asks for counting/aggregation or searching/listing specific content.
+    
+    Query: "{question}"
 
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 15})
-        relevant_docs = retriever.invoke(question)
+    Respond with EXACTLY one word:
+    - "aggregate": if the query asks "how many", "total number", "count", or requests exact counts/totals.
+    - "find": if the query asks for specific tasks, content search, descriptions, or general task details.
 
-        if not relevant_docs:
-            return "I couldn't find any relevant answer for your question."
+    Intent:"""
 
-        context = "\n\n".join([doc.page_content for doc in relevant_docs])
 
-        prompt = f"""
-        You are a helpful assistant that answers questions about the user's tasks.
+    response = get_ai_response(prompt).strip().lower()
+    
+    if "aggregate" in response:
+        return "aggregate"
+    return "find"
 
-        Important Rules:
-        - You are given only a partial list of the user's tasks (not all of them).
-        - Base your answer only on the tasks provided below.
-        - If the user asks for a count and you don't have all tasks, say so clearly.
-        - If no question given, say so politely.
-        - Do not make up information.
-        
-        Answer this way:
-        - If you will have to list tasks, list all the tasks by listing them with numbers like : 1. ... 2. ...
-        Relevant tasks:
-        {context}
+def handle_aggregate(question: str, user=None) -> str:
+    q = question.lower()
 
-        User's Question: {question}
+    tasks = Task.objects.all()
 
-        Answer clearly and concisely .
-        """
-        return get_ai_response(prompt)
+    if "pending" in q or "todo" in q or "not started" in q:
+        tasks = tasks.filter(status="todo")   # your default is 'todo', not 'pending'
+        label = "pending"
+    elif "progress" in q or "in_progress" in q or "ongoing" in q:
+        tasks = tasks.filter(status="in_progress")
+        label = "in progress"
+    elif "complete" in q or "done" in q or "finished" in q:
+        tasks = tasks.filter(status="done")   # change to 'completed' if that is your choice
+        label = "completed"
+    else:
+        label = "total"
 
-    except Exception as e:
-        print("Error in ask_ai_about_tasks:", e)
-        return f"Sorry, something went wrong. Error: {str(e)}"
+    for cat in Category.objects.all():
+        if cat.name and cat.name.lower() in q:
+            tasks = tasks.filter(category=cat)
+            label = f"{label} in {cat.name}"
+            break
+
+    count = tasks.count()
+    return f"You have {count} {label} task{'s' if count != 1 else ''}."
+
+def ask_ai_about_tasks(question: str, user) -> str:
+    intent = classify_intent(question)
+    vectorstore = get_vectorstore()
+    THRESHOLD = 0.73
+
+    if intent == "aggregate":
+        return handle_aggregate(question, user)
+
+    results = vectorstore.similarity_search_with_score(question, k=10)
+    relevant = [(d, s) for d, s in results if s <= THRESHOLD]
+
+    if not relevant:
+        return "I couldn't find any tasks related to that in your data."
+
+    # Formating context clearly with title and category metadatas
+    context = "\n\n".join(
+        f"- Title: {d.metadata.get('title')}\n  Category: {d.metadata.get('category')}\n  Content: {d.page_content}"
+        for d, _ in relevant
+    )
+
+    prompt = f"""Answer the user's question based on their tasks listed below.
+    Use reasonable common-sense connections (for example, fixing a faucet or leak counts as home repair).
+    If none of the tasks relate to the question at all, state that you could not find relevant tasks.
+    
+    User Tasks:
+    {context}
+
+    Question: {question}"""
+
+    return get_ai_response(prompt)
 
 def delete_task_from_vectorstore(task_id):
     """
@@ -157,14 +189,14 @@ def sync_all_tasks_to_vectorstore(tasks):
     """
     Wipes old vector data and batch-embeds active tasks cleanly.
     """
-    # 1. Delete the old collection from Postgres using a temporary reference
-    temp_store = get_vectorstore()
+    # 1- Deletes the old collection from Postgres using a temporary reference
+    temporary_store = get_vectorstore()
     try:
-        temp_store.delete_collection()
+        temporary_store.delete_collection()
     except Exception as e:
         print(f"Collection reset warning: {e}")
 
-    # 2. Get a FRESH vectorstore instance (re-creates the collection in Postgres with a new valid ID)
+    # 2- Gets a FRESH vectorstore instance (re-creates the collection in Postgres with a new valid ID)
     vectorstore = get_vectorstore()
 
     if not tasks:
@@ -175,18 +207,16 @@ def sync_all_tasks_to_vectorstore(tasks):
     ids = []
 
     for task in tasks:
-        page_content = (
-            f"Task Title: {task.title}. "
-            f"Description: {task.description or 'No description provided'}. "
-            f"Current Status: {task.status}. "
-            f"Category: {task.category.name if task.category else 'No category'}."
-        )
+
+        page_content = f"{task.title}. {task.description or ''}"
+
         metadata = {
             "task_id": str(task.id),
             "title": task.title,
             "status": task.status,
             "category": task.category.name if task.category else "None"
         }
+
         documents.append(Document(page_content=page_content, metadata=metadata))
         ids.append(str(task.id))
 
@@ -194,38 +224,22 @@ def sync_all_tasks_to_vectorstore(tasks):
     vectorstore.add_documents(documents, ids=ids)
     print(f">>> Successfully synced {len(documents)} tasks to vectorstore!")
 
-          
-# def sync_all_tasks_to_vectorstore(tasks):
-#     """
-#     Wipes stale vectors and re-embeds only active DB tasks.
-#     """
+
+# def clear_vectorstore():
+    
+#     "Completely clears all documents from the pgvector collection.To be used only if needed ."
+    
 #     vectorstore = get_vectorstore()
+
+#     if vectorstore is None:
+#         print("Vector store is not available (running on SQLite).")
+#         return False
+
 #     try:
+#         # This deletes the entire collection and recreates it empty
 #         vectorstore.delete_collection()
+#         print("Successfully cleared the vector store.")
+#         return True
 #     except Exception as e:
-#         print(f"collection reset warning: {e}")
-        
-#     for task in tasks:
-#         add_task_to_vectorstore(task)
-        
-
-"""
-def clear_vectorstore():
-    
-    "Completely clears all documents from the pgvector collection.To be used only if needed ."
-    
-    vectorstore = get_vectorstore()
-
-    if vectorstore is None:
-        print("Vector store is not available (running on SQLite).")
-        return False
-
-    try:
-        # This deletes the entire collection and recreates it empty
-        vectorstore.delete_collection()
-        print("Successfully cleared the vector store.")
-        return True
-    except Exception as e:
-        print(f"Error while clearing vector store: {e}")
-        return False
-"""
+#         print(f"Error while clearing vector store: {e}")
+#         return False

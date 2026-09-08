@@ -31,7 +31,7 @@ class AskAIView(APIView):
             )
 
         #Get answer from OpenAI
-        answer = ask_ai_about_tasks(question)
+        answer = ask_ai_about_tasks(question, request.user)
 
         return Response({"answer": answer}, status=status.HTTP_200_OK)
 
