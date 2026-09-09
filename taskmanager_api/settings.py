@@ -19,15 +19,15 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 # if RENDER_EXTERNAL_HOSTNAME:
 #     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# 1. Always include local development hosts
+# 1. Local development hosts
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
 
-# 2. Append any extra hosts from .env (like 'db' or production domain)
+# 2. Append any host from .env
 env_hosts = os.environ.get('ALLOWED_HOSTS', '')
 if env_hosts:
     ALLOWED_HOSTS.extend([h.strip() for h in env_hosts.split(',') if h.strip()])
 
-# 3. Append Render hostname if deployed
+# 3. Append Render hostname
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)

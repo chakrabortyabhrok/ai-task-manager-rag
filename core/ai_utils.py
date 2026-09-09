@@ -100,6 +100,17 @@ def add_task_to_vectorstore(task):
 
 
 def classify_intent(question: str) -> str:
+    q = question.lower()
+
+    chat_words = [
+        "hello", "hi", "hey", "thanks", "thank you",
+        "what can you do", "who are you", "help",
+        "what do you do", "how do you work",
+    ]
+
+    if any(word in q for word in chat_words):
+        return "chat"
+
     prompt = f"""Analyze the user query and decide if it asks for counting/aggregation or searching/listing specific content.
     
     Query: "{question}"
@@ -110,9 +121,10 @@ def classify_intent(question: str) -> str:
 
     Intent:"""
 
+    if any(word in q for word in ["related", "about", "regarding", "concerning"]):
+        return "find"
 
     response = get_ai_response(prompt).strip().lower()
-    
     if "aggregate" in response:
         return "aggregate"
     return "find"
@@ -122,15 +134,35 @@ def handle_aggregate(question: str, user=None) -> str:
 
     tasks = Task.objects.all()
 
-    if "pending" in q or "todo" in q or "not started" in q:
-        tasks = tasks.filter(status="todo")   # your default is 'todo', not 'pending'
-        label = "pending"
-    elif "progress" in q or "in_progress" in q or "ongoing" in q:
+    if (
+        "incomplete" in q
+        or "not complete" in q
+        or "not completed" in q
+        or "pending" in q
+        or "todo" in q
+        or "not started" in q
+    ):
+        tasks = tasks.exclude(status="done")
+        label = "incomplete"
+
+    elif (
+        "progress" in q 
+        or "in_progress" in q 
+        or "ongoing" in q
+        or "actively doing" in q
+        or "tasks I am doing right now" in q
+    ):
         tasks = tasks.filter(status="in_progress")
         label = "in progress"
-    elif "complete" in q or "done" in q or "finished" in q:
-        tasks = tasks.filter(status="done")   # change to 'completed' if that is your choice
+
+    elif (
+        "complete" in q 
+        or "done" in q 
+        or "finished" in q
+    ):
+        tasks = tasks.filter(status="done")
         label = "completed"
+
     else:
         label = "total"
 
@@ -148,10 +180,23 @@ def ask_ai_about_tasks(question: str, user) -> str:
     vectorstore = get_vectorstore()
     THRESHOLD = 0.73
 
+    if intent == "chat":
+        return (
+        "Hi! I can count your tasks. \n"
+        "Or find tasks by topics \n\n"
+        "- Ask me anything about your tasks."
+        )
+
     if intent == "aggregate":
         return handle_aggregate(question, user)
 
-    results = vectorstore.similarity_search_with_score(question, k=10)
+    search_q = question.lower()
+
+    for w in ["how many", "how much", "count of", "number of"]:
+        search_q = search_q.replace(w, "")
+        search_q = search_q.strip() or question
+
+    results = vectorstore.similarity_search_with_score(search_q, k=10)
     relevant = [(d, s) for d, s in results if s <= THRESHOLD]
 
     if not relevant:
