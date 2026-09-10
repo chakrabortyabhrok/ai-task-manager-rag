@@ -22,43 +22,46 @@ class AskAIView(APIView):
     """
 
     def post(self, request):
-        question = request.data.get('question', '').strip()
+        question = request.data.get("question", "").strip()
 
         if not question:
             return Response(
-                {"error": "Question is required."},
-                status = status.HTTP_400_BAD_REQUEST
+                {"error": "Question is required."}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        #Get answer from OpenAI
+        # Get answer from OpenAI
         answer = ask_ai_about_tasks(question, request.user)
 
         return Response({"answer": answer}, status=status.HTTP_200_OK)
+
 
 # class StandardPagination(PageNumberPagination):
 #     page_size = 50
 #     page_size_query_param = 'page_size'
 #     max_page_size = 100
 
+
 class TaskViewSet(ModelViewSet):
-    """ API ViewSet for managing tasks with filtering, searching, and pagination. """
+    """API ViewSet for managing tasks with filtering, searching, and pagination."""
+
     queryset = Task.objects.all()
-    serializer_class = TaskSerializer 
-    lookup_field = 'pk'
-    search_fields = ['title', 'description']
+    serializer_class = TaskSerializer
+    lookup_field = "pk"
+    search_fields = ["title", "description"]
 
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TaskFilter
     # pagination_class = StandardPagination
-    ordering_fields = ['due_date', 'created_at', 'title']
-     
+    ordering_fields = ["due_date", "created_at", "title"]
+
     def get_serializer(self, *args, **kwargs):
-        
-        if isinstance(kwargs.get('data'), list):
-            kwargs['many'] = True
+
+        if isinstance(kwargs.get("data"), list):
+            kwargs["many"] = True
         return super().get_serializer(*args, **kwargs)
 
-@api_view(['GET'])
+
+@api_view(["GET"])
 def vectorstore_status(request):
     """
     Check the current vector store and how many tasks are embedded.
@@ -74,57 +77,71 @@ def vectorstore_status(request):
         except Exception:
             count = 0
 
-        return Response({
-            "status": "active",
-            "vector_store": store_type,
-            "tasks_in_vectorstore": count,
-            "message": f"Currently {count} tasks are embedded in {store_type}"
-        })
+        return Response(
+            {
+                "status": "active",
+                "vector_store": store_type,
+                "tasks_in_vectorstore": count,
+                "message": f"Currently {count} tasks are embedded in {store_type}",
+            }
+        )
 
     except Exception as e:
-        return Response({
-            "status": "error",
-            "message": str(e),
-            "tasks_in_vectorstore": 0
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+        return Response(
+            {"status": "error", "message": str(e), "tasks_in_vectorstore": 0},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
 User = get_user_model()
+
 
 class CreateSuperUserView(APIView):
     """
     Temporary view to create a superuser on production.
     Delete this after creating the superuser.
     """
+
     def post(self, request):
         secret_key = request.data.get("secret_key", "")
-        
+
         # Change this secret key to something only you know
         if secret_key != "create-superuser-2026":
-            return Response({"error": "Invalid secret key"}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"error": "Invalid secret key"}, status=status.HTTP_403_FORBIDDEN
+            )
 
         username = request.data.get("username")
         password = request.data.get("password")
         email = request.data.get("email", "")
 
         if not username or not password:
-            return Response({"error": "username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "username and password are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if User.objects.filter(username=username).exists():
-            return Response({"error": "User already exists"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "User already exists"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             user = User.objects.create_superuser(
-                username=username,
-                email=email,
-                password=password
+                username=username, email=email, password=password
             )
-            return Response({
-                "message": f"Superuser '{username}' created successfully",
-                "username": user.username
-            }, status=status.HTTP_201_CREATED)
+            return Response(
+                {
+                    "message": f"Superuser '{username}' created successfully",
+                    "username": user.username,
+                },
+                status=status.HTTP_201_CREATED,
+            )
         except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class RegisterView(APIView):
     # Overriding global IsAuthenticated setting so anyone can register
@@ -142,17 +159,16 @@ class RegisterView(APIView):
                     "user": {
                         "id": user.id,
                         "username": user.username,
-                        "email": user.email
-                    }
+                        "email": user.email,
+                    },
                 },
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED,
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-#class DeleteAllTasksView(APIView):
-    #"""
+# class DeleteAllTasksView(APIView):
+# """
 #    Temporary view to delete ALL tasks from the database.
 #    DELETE this view after you are done using it.
 #    """
@@ -170,8 +186,8 @@ class RegisterView(APIView):
 #            "message": f"Successfully deleted {deleted_count} tasks",
 #            "deleted_count": deleted_count
 #        }, status=status.HTTP_200_OK)
-    
-#class ClearVectorstoreView(APIView):
+
+# class ClearVectorstoreView(APIView):
 #    """
 #    Temporary view to completely clear the pgvector collection.
 #    DELETE this view after use.

@@ -9,6 +9,7 @@ from core.ai_utils import ask_ai_about_tasks, handle_aggregate, classify_intent
 
 User = get_user_model()
 
+
 def run_tests():
     # - Grab an active user from the database
     user = User.objects.first()
@@ -22,13 +23,13 @@ def run_tests():
     # 1- Direct tests for handle_aggregate SQL queries
     print("1. DIRECT AGGREGATE TESTS (SQL Queries)")
     print("=" * 60)
-    
+
     aggregate_queries = [
         "How many total tasks do I have?",
         "How many tasks are in progress?",
         "How many completed tasks do I have?",
         "How many pending tasks exist?",
-        "How many tasks are in Work category?", 
+        "How many tasks are in Work category?",
     ]
 
     for q in aggregate_queries:
@@ -54,6 +55,7 @@ def run_tests():
         print(f"Intent:     {intent}")
         response = ask_ai_about_tasks(query, user)
         print(f"AI Output:  {response}")
+
 
 if __name__ == "__main__":
     run_tests()

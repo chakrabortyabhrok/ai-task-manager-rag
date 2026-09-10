@@ -11,10 +11,10 @@ def embed_task_after_save(sender, instance, **kwargs):
     except Exception as e:
         print(f"Vector store embedding failed for task {instance.id}: {e}")
 
+
 @receiver(post_delete, sender=Task)
 def remove_task_after_delete(sender, instance, **kwargs):
     try:
         delete_task_from_vectorstore(instance.id)
     except Exception as e:
         print(f"Vector store deletion failed for task {instance.id}: {e}")
-        

@@ -9,6 +9,7 @@ from .models import Category, Task
 
 load_dotenv()
 
+
 def get_ai_response(prompt: str, model: str = "gpt-4o-mini") -> str:
     try:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -16,11 +17,12 @@ def get_ai_response(prompt: str, model: str = "gpt-4o-mini") -> str:
             model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=300,
-            temperature=0.5
+            temperature=0.5,
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Error: {str(e)}"
+
 
 def generate_task_summary(task):
     prompt = f"""
@@ -34,6 +36,7 @@ def generate_task_summary(task):
     except Exception as e:
         print(f"Error generating summary: {str(e)}")
         return ""
+
 
 def auto_categorize_task(title, description):
     prompt = f"""
@@ -51,6 +54,7 @@ def auto_categorize_task(title, description):
         print(f"Error generating category: {str(e)}")
         return ""
 
+
 def get_vectorstore():
     """
     Always use PGVector (PostgreSQL) for both local and production.
@@ -61,7 +65,7 @@ def get_vectorstore():
     connection_string = os.environ.get("DATABASE_URL")
 
     if not connection_string:
-        """ Build local connection string from environment variables"""
+        """Build local connection string from environment variables"""
 
         db_name = os.environ.get("DB_NAME", "taskmanager_db")
         db_user = os.environ.get("DB_USER", "newuser123")
@@ -78,6 +82,7 @@ def get_vectorstore():
         use_jsonb=True,
     )
 
+
 def add_task_to_vectorstore(task):
     """
     Adds a task to the PGVector store (PostgreSQL).
@@ -92,7 +97,7 @@ def add_task_to_vectorstore(task):
         "task_id": task.id,
         "title": task.title,
         "status": task.status,
-        "category": task.category.name if task.category else "None"
+        "category": task.category.name if task.category else "None",
     }
 
     document = Document(page_content=page_content, metadata=metadata)
@@ -103,9 +108,16 @@ def classify_intent(question: str) -> str:
     q = question.lower()
 
     chat_words = [
-        "hello", "hi", "hey", "thanks", "thank you",
-        "what can you do", "who are you", "help",
-        "what do you do", "how do you work",
+        "hello",
+        "hi",
+        "hey",
+        "thanks",
+        "thank you",
+        "what can you do",
+        "who are you",
+        "help",
+        "what do you do",
+        "how do you work",
     ]
 
     if any(word in q for word in chat_words):
@@ -129,6 +141,7 @@ def classify_intent(question: str) -> str:
         return "aggregate"
     return "find"
 
+
 def handle_aggregate(question: str, user=None) -> str:
     q = question.lower()
 
@@ -146,8 +159,8 @@ def handle_aggregate(question: str, user=None) -> str:
         label = "incomplete"
 
     elif (
-        "progress" in q 
-        or "in_progress" in q 
+        "progress" in q
+        or "in_progress" in q
         or "ongoing" in q
         or "actively doing" in q
         or "tasks I am doing right now" in q
@@ -155,11 +168,7 @@ def handle_aggregate(question: str, user=None) -> str:
         tasks = tasks.filter(status="in_progress")
         label = "in progress"
 
-    elif (
-        "complete" in q 
-        or "done" in q 
-        or "finished" in q
-    ):
+    elif "complete" in q or "done" in q or "finished" in q:
         tasks = tasks.filter(status="done")
         label = "completed"
 
@@ -175,6 +184,7 @@ def handle_aggregate(question: str, user=None) -> str:
     count = tasks.count()
     return f"You have {count} {label} task{'s' if count != 1 else ''}."
 
+
 def ask_ai_about_tasks(question: str, user) -> str:
     intent = classify_intent(question)
     vectorstore = get_vectorstore()
@@ -182,9 +192,9 @@ def ask_ai_about_tasks(question: str, user) -> str:
 
     if intent == "chat":
         return (
-        "Hi! I can count your tasks. \n"
-        "Or find tasks by topics \n\n"
-        "- Ask me anything about your tasks."
+            "Hi! I can count your tasks. \n"
+            "Or find tasks by topics \n\n"
+            "- Ask me anything about your tasks."
         )
 
     if intent == "aggregate":
@@ -219,12 +229,13 @@ def ask_ai_about_tasks(question: str, user) -> str:
 
     return get_ai_response(prompt)
 
+
 def delete_task_from_vectorstore(task_id):
     """
     Removes a deleted task vector from PGVector
     """
     try:
-        vectorstore =get_vectorstore()
+        vectorstore = get_vectorstore()
         vectorstore.delete(ids=[str(task_id)])
     except Exception as e:
         print(f"Error deleting {task_id} vector: {e}")
@@ -259,7 +270,7 @@ def sync_all_tasks_to_vectorstore(tasks):
             "task_id": str(task.id),
             "title": task.title,
             "status": task.status,
-            "category": task.category.name if task.category else "None"
+            "category": task.category.name if task.category else "None",
         }
 
         documents.append(Document(page_content=page_content, metadata=metadata))
@@ -271,9 +282,9 @@ def sync_all_tasks_to_vectorstore(tasks):
 
 
 # def clear_vectorstore():
-    
+
 #     "Completely clears all documents from the pgvector collection.To be used only if needed ."
-    
+
 #     vectorstore = get_vectorstore()
 
 #     if vectorstore is None:
