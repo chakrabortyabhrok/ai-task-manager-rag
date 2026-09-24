@@ -17,7 +17,7 @@ DEBUG = os.environ.get("DEBUG", "False") == "True"
 # 1. Local development hosts
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 
-# 2. Append any host from .env
+# 2. Append from .env
 env_hosts = os.environ.get("ALLOWED_HOSTS", "")
 if env_hosts:
     ALLOWED_HOSTS.extend([h.strip() for h in env_hosts.split(",") if h.strip()])
