@@ -279,23 +279,3 @@ def sync_all_tasks_to_vectorstore(tasks):
     print(f">>> Batch embedding {len(documents)} tasks...")
     vectorstore.add_documents(documents, ids=ids)
     print(f">>> Successfully synced {len(documents)} tasks to vectorstore!")
-
-
-# def clear_vectorstore():
-
-#     "Completely clears all documents from the pgvector collection.To be used only if needed ."
-
-#     vectorstore = get_vectorstore()
-
-#     if vectorstore is None:
-#         print("Vector store is not available (running on SQLite).")
-#         return False
-
-#     try:
-#         # This deletes the entire collection and recreates it empty
-#         vectorstore.delete_collection()
-#         print("Successfully cleared the vector store.")
-#         return True
-#     except Exception as e:
-#         print(f"Error while clearing vector store: {e}")
-#         return False
