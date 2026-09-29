@@ -10,20 +10,6 @@ from .models import Category, Task
 load_dotenv()
 
 
-def get_ai_response(prompt: str, model: str = "gpt-4o-mini") -> str:
-    try:
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=300,
-            temperature=0.5,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-
 def generate_task_summary(task):
     prompt = f"""
     Summarize this task in 1-2 very short sentences:
@@ -228,6 +214,20 @@ def ask_ai_about_tasks(question: str, user) -> str:
     Question: {question}"""
 
     return get_ai_response(prompt)
+
+
+def get_ai_response(prompt: str, model: str = "gpt-4o-mini") -> str:
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=300,
+            temperature=0.5,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 def delete_task_from_vectorstore(task_id):
