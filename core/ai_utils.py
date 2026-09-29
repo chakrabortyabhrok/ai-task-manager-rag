@@ -241,41 +241,41 @@ def delete_task_from_vectorstore(task_id):
         print(f"Error deleting {task_id} vector: {e}")
 
 
-def sync_all_tasks_to_vectorstore(tasks):
-    """
-    Wipes old vector data and batch-embeds active tasks cleanly.
-    """
-    # 1- Deletes the old collection from Postgres using a temporary reference
-    temporary_store = get_vectorstore()
-    try:
-        temporary_store.delete_collection()
-    except Exception as e:
-        print(f"Collection reset warning: {e}")
+# def sync_all_tasks_to_vectorstore(tasks):
+#     """
+#     Wipes old vector data and batch-embeds active tasks cleanly.
+#     """
+#     # 1- Deletes the old collection from Postgres using a temporary reference
+#     temporary_store = get_vectorstore()
+#     try:
+#         temporary_store.delete_collection()
+#     except Exception as e:
+#         print(f"Collection reset warning: {e}")
 
-    # 2- Gets a FRESH vectorstore instance (re-creates the collection in Postgres with a new valid ID)
-    vectorstore = get_vectorstore()
+#     # 2- Gets a FRESH vectorstore instance (re-creates the collection in Postgres with a new valid ID)
+#     vectorstore = get_vectorstore()
 
-    if not tasks:
-        print("No tasks to sync.")
-        return
+#     if not tasks:
+#         print("No tasks to sync.")
+#         return
 
-    documents = []
-    ids = []
+#     documents = []
+#     ids = []
 
-    for task in tasks:
+#     for task in tasks:
 
-        page_content = f"{task.title}. {task.description or ''}"
+#         page_content = f"{task.title}. {task.description or ''}"
 
-        metadata = {
-            "task_id": str(task.id),
-            "title": task.title,
-            "status": task.status,
-            "category": task.category.name if task.category else "None",
-        }
+#         metadata = {
+#             "task_id": str(task.id),
+#             "title": task.title,
+#             "status": task.status,
+#             "category": task.category.name if task.category else "None",
+#         }
 
-        documents.append(Document(page_content=page_content, metadata=metadata))
-        ids.append(str(task.id))
+#         documents.append(Document(page_content=page_content, metadata=metadata))
+#         ids.append(str(task.id))
 
-    print(f">>> Batch embedding {len(documents)} tasks...")
-    vectorstore.add_documents(documents, ids=ids)
-    print(f">>> Successfully synced {len(documents)} tasks to vectorstore!")
+#     print(f">>> Batch embedding {len(documents)} tasks...")
+#     vectorstore.add_documents(documents, ids=ids)
+#     print(f">>> Successfully synced {len(documents)} tasks to vectorstore!")
