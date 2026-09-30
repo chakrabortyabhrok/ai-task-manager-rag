@@ -42,9 +42,6 @@ def auto_categorize_task(title, description):
 
 
 def get_vectorstore():
-    """
-    Always use PGVector (PostgreSQL) for both local and production.
-    """
 
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
@@ -70,9 +67,8 @@ def get_vectorstore():
 
 
 def add_task_to_vectorstore(task):
-    """
-    Adds a task to the PGVector store (PostgreSQL).
-    """
+    """Adds task to PGVector store"""
+
     print(f">>> Embedding task ID: {task.id} | Title: {task.title}")
 
     vectorstore = get_vectorstore()
